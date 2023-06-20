@@ -50,7 +50,7 @@ JJ_COLUMNS_DTYPES = {
    "duration": "int32"
 },
 HH_COLUMNS_DTYPES = {
-   "dwelling": "int8",
+   "dwelling": "int32",
    "hhSize": "int8",
    "autos": "int8"
 },
