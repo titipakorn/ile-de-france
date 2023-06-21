@@ -10,15 +10,15 @@ import itertools
 data_path = "/home/users/v-surapoom/Workspaces/ile-de-france/experiments/data"
 cache_path = "cache"
 output_path = "test_output"
-config = dict(random_seed=12345,sampling_rate=0.001,
+config = dict(random_seed=12345,sampling_rate=0.01,
     data_path = data_path, output_path = output_path,
-    output_prefix = "test_", hts = "entd",java_memory="50G",
+    output_prefix = "test_003", hts = "entd",java_memory="50G",
     processes=32)
     # %%
 
 
 stages = [
-    dict(descriptor = "synthesis.locations.education"),
+    dict(descriptor = "synthesis_thailand.locations.work"),
 ]
 
 test_stage=synpp.run(stages, config, working_directory = cache_path)
@@ -26,7 +26,7 @@ test_stage=synpp.run(stages, config, working_directory = cache_path)
 
 
 stages = [
-    dict(descriptor = "data.thailand_od.weighted"),
+    dict(descriptor = "synthesis_thailand.locations.work"),
     # dict(descriptor = "synthesis.population.activities"),
 ]
 

@@ -22,8 +22,8 @@ PURPOSE_MAP = [
 MODES_MAP = [
     ("0", "stay"),
     ("1", "car"),
-    ("2", "car"), # passenger
-    ("3", "bike"), # bike
+    ("2", "car_passenger"), # passenger
+    ("3", "car"), # bike
     ("4", "car_passenger"), # motorcycle passenger
     ("5", "pt"),
     ("6", "pt"),
