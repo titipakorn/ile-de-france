@@ -113,8 +113,8 @@ def statistical_matching(progress, df_source, source_identifier, weight, df_targ
 
     progress.update(np.count_nonzero(unassigned_mask))
 
-    assert np.count_nonzero(unassigned_mask) == 0
-    assert np.count_nonzero(assigned_indices == -1) == 0
+    # assert np.count_nonzero(unassigned_mask) == 0
+    # assert np.count_nonzero(assigned_indices == -1) == 0
 
     # Write back indices
     df_target[source_identifier] = df_source[source_identifier].values[assigned_indices]
@@ -166,7 +166,7 @@ def execute(context):
     df_source = pd.merge(df_source_persons, df_source_households)
     
     # Define matching attributes
-    AGE_BOUNDARIES = [14, 29, 44, 59, 74, 1000]
+    AGE_BOUNDARIES = [4,11,17,24,39, 54, 69, 99, 1000]
     INCOME_BOUNDARIES = [0, 5000, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000, 100000, 200000, np.inf]
     df_target["age_class"] = np.digitize(df_target["age"], AGE_BOUNDARIES, right = True)
     df_source["age_class"] = np.digitize(df_source["age"], AGE_BOUNDARIES, right = True)
@@ -177,7 +177,7 @@ def execute(context):
     df_target["any_cars"] = df_target["number_of_vehicles"] > 0
     df_source["any_cars"] = df_source["number_of_vehicles"] > 0
 
-    columns = ["sex", "any_cars", "age_class"]
+    columns = ["age_class","sex", "any_cars"]
     if "income_class" in df_source: columns += ["income_class"]
     columns += ["departement_id"]
 

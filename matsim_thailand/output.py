@@ -32,6 +32,49 @@ def execute(context):
         "%sconfig.xml" % context.config("output_prefix")
     ]
 
+    # it would make more sense to modify this in the eqasim-java part (in org.eqasim.core.scenario.config)
+    # but it's not obvious how to preserve backward compatibility hence the following method :
+    config_file = "%sconfig.xml" % context.config("output_prefix")
+    with open( "%s/%s" % (context.path("matsim_thailand.simulation.prepare"), config_file)) as f_read:
+        content = f_read.read()
+        content = content.replace(
+            '<param name="writeExperiencedPlans" value="false" />',
+            '<param name="writeExperiencedPlans" value="true" />'
+        )
+        content = content.replace(
+            '<param name="trafficDynamics" value="queue" />',
+            '<param name="trafficDynamics" value="kinematicWaves" />'
+        )
+        content = content.replace(
+            '<param name="modes" value="car,pt,bike,walk" />',
+            '<param name="modes" value="car,pt,walk" />'
+        )
+        content = content.replace(
+            '<param name="chainBasedModes" value="car,bike" />',
+            '<param name="chainBasedModes" value="car" />'
+        )
+        content = content.replace(
+            '<param name="mutationAffectsDuration" value="true" />',
+            '<param name="mutationAffectsDuration" value="false" />'
+        )
+        content = content.replace(
+            '<param name="availableModes" value="pt, car, walk, bike" />',
+            '<param name="availableModes" value="pt, car, walk" />'
+        )
+        content = content.replace(
+            '<param name="cachedModes" value="pt, car, truck, car_passenger, walk, bike" />',
+            '<param name="cachedModes" value="pt, car, car_passenger, walk" />'
+        )
+        content = content.replace(
+            'value="60"',
+            'value="10"'
+        )
+        
+        with open("%s/%s" % (context.config("output_path"), config_file), "w+") as f_write:
+            f_write.write(content)
+    # since we did a copy & modify, no need to copy it again
+    file_names.remove(config_file)
+        
     if context.config("generate_vehicles_file"):
         vehicle_file = "%svehicles.xml.gz" % context.config("output_prefix")
 

@@ -1,0 +1,5 @@
+java -Xmx14G -cp tst_run.jar org.eqasim.ile_de_france.RunSimulation --config-path test_config.xml
+
+java -Xmx14G -cp ile_de_france_run.jar org.eqasim.ile_de_france.RunSimulation --config-path ile_de_france_config.xml
+
+java -Xmx20G -cp v01run.jar org.eqasim.ile_de_france.RunSimulation --config-path v01config.xml

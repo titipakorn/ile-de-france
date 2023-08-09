@@ -38,8 +38,8 @@ def execute(context):
     df_pp.loc[df_pp["gender"] == 2, "sex"] = "female"
     df_pp["sex"] = df_pp["sex"].astype("category")
     df_pp["couple"] = df_pp["relationShip"] == "married"
-    df_pp["employed"] = df_pp["occupation"] == 2
-    df_pp["studies"] = df_pp["occupation"] == 1
+    df_pp["employed"] = df_pp["occupation"] == 1
+    df_pp["studies"] = df_pp["occupation"] == 3
 
     df_target = pd.merge(df_hh, df_pp)
     df_target = df_target.rename(columns={"hhid":"household_id","hhSize":"household_size","autos":"number_of_vehicles","driversLicense":"has_license"})

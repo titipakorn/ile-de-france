@@ -38,6 +38,8 @@ MODES_MAP = [
     ("15", "pt"), # other
 ]
 
+TIME_24HRS=60*60*24
+
 def fix_time(x):
     if len(x) == 10:
         return "00:00:00.000"
@@ -45,6 +47,8 @@ def fix_time(x):
         return x
     else:
         return x[11:]
+    
+
 
 def fix_escort(x):
     if(x['T_PURPOSE']==5):
@@ -74,6 +78,7 @@ def execute(context):
     df_trips = sum_df.merge(df_trips[selected_columns], on=['P_CODE','T_NUMBER'], how='left')
     df_trips = df_trips.drop_duplicates(subset=['P_CODE','T_NUMBER'], keep='first')
     #fix trip_purpose
+    df_trips["BACKUP_PURPOSE"]=df_trips["T_PURPOSE"]
     df_trips["T_PURPOSE"]=df_trips.apply(fix_escort,axis=1)
     
     df_trips['PRE_T_PURPOSE'] = df_trips.groupby(['P_CODE'])['T_PURPOSE'].shift(1).fillna(6).astype(int)
@@ -150,6 +155,9 @@ def execute(context):
             df_trips["T_MODE"].astype(str).str.startswith(prefix), "mode"
         ] = mode
     #filter stay mode
+    #edit age<15 from car to pt
+    df_trip_person=pd.merge(df_trips,df_persons, on="person_id")
+    df_trips.loc[(df_trip_person["mode"]=="car") & (df_trip_person["age"]<15),"mode"]="pt"
     df_trips =df_trips[df_trips["mode"]!="stay"]
     df_trips["mode"] = df_trips["mode"].astype("category")
 
@@ -171,7 +179,10 @@ def execute(context):
     # Durations
     df_trips["trip_duration"] = df_trips["arrival_time"] - df_trips["departure_time"]
     hts.compute_activity_duration(df_trips)
-
+    
+    #filter only a trip within 24 hours
+    df_trips = df_trips[(df_trips["departure_time"]<=TIME_24HRS) & (df_trips["arrival_time"]<=TIME_24HRS)]
+    
     # # Add weight to trips
     # df_trips["trip_weight"] = df_trips["PONDKI"]
 
@@ -196,6 +207,25 @@ def execute(context):
     # Socioprofessional class
     # df_persons["socioprofessional_class"] = df_persons["CS24"].fillna(80).astype(int) // 10
 
+    #manipulate escort trips
+    # df_persons.loc[df_persons["P_CODE"].isin(df_trips[(df_trips["preceding_purpose"]=="education") & (df_trips["following_purpose"]=="work") & (df_trips["mode"]=="car")]["P_CODE"].unique()),"person_weight"]*=10
+    # df_households.loc[df_households["household_id"].isin(df_persons[df_persons["P_CODE"].isin(df_trips[(df_trips["preceding_purpose"]=="education") & (df_trips["following_purpose"]=="work") & (df_trips["mode"]=="car")]["P_CODE"].unique())]["household_id"].unique()),"household_weight"]*=10
+    
+    # #balancing student age distribution by dividing ages>18 down
+    # filtered_person=(df_persons["P_CODE"].isin(df_trips[(df_trips["preceding_purpose"]=="home") & (df_trips["following_purpose"]=="education")]["P_CODE"].unique())) & (df_persons["age"]>18) & (df_persons["employed"]==False) & (df_persons["studies"]==True)
+    # df_persons.loc[filtered_person,"person_weight"]=0
+    # # df_households.loc[df_households["household_id"].isin(df_persons[filtered_person]["household_id"].unique()),"household_weight"]/=2
+
+    # #balancing student age distribution by dividing ages>30 down to 0
+    # filtered_person=(df_persons["P_CODE"].isin(df_trips[(df_trips["preceding_purpose"]=="home") & (df_trips["following_purpose"]=="education")]["P_CODE"].unique())) & (df_persons["age"]>30) & (df_persons["employed"]==False) & (df_persons["studies"]==True)
+    # df_persons.loc[filtered_person,"person_weight"]=0
+    # df_households.loc[df_households["household_id"].isin(df_persons[filtered_person]["household_id"].unique()),"household_weight"]=0
+    
+    # #balancing student age distribution by dividing ages<18 up
+    # filtered_person=(df_persons["P_CODE"].isin(df_trips[(df_trips["preceding_purpose"]=="home") & (df_trips["following_purpose"]=="education")]["P_CODE"].unique())) & (df_persons["age"]<16) & (df_persons["employed"]==False) & (df_persons["studies"]==True)
+    # df_persons.loc[filtered_person,"person_weight"]*=100
+    # df_households.loc[df_households["household_id"].isin(df_persons[filtered_person]["household_id"].unique()),"household_weight"]*=100
+    
     return df_households, df_persons, df_trips
 
 def calculate_income_class(df):

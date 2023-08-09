@@ -5,6 +5,7 @@ import matsim_thailand.runtime.git as git
 import matsim_thailand.runtime.java as java
 import matsim_thailand.runtime.maven as maven
 
+
 def configure(context):
     context.stage("matsim_thailand.runtime.git")
     context.stage("matsim_thailand.runtime.java")
@@ -12,8 +13,9 @@ def configure(context):
 
     context.config("eqasim_version", "1.3.1")
     context.config("eqasim_branch", "upstream")
-    context.config("eqasim_repository", "https://github.com/eqasim-org/eqasim-java.git")
+    context.config("eqasim_repository", "https://github.com/titipakorn/eqasim-java.git")
     context.config("eqasim_path", "")
+
 
 def run(context, command, arguments):
     version = context.config("eqasim_version")
@@ -22,9 +24,11 @@ def run(context, command, arguments):
     context.stage("matsim_thailand.runtime.eqasim")
 
     jar_path = "%s/eqasim-java/ile_de_france/target/ile_de_france-%s.jar" % (
-        context.path("matsim_thailand.runtime.eqasim"), version
+        context.path("matsim_thailand.runtime.eqasim"),
+        version,
     )
     java.run(context, command, arguments, jar_path)
+
 
 def execute(context):
     version = context.config("eqasim_version")
@@ -32,25 +36,39 @@ def execute(context):
     # Normal case: we clone eqasim
     if context.config("eqasim_path") == "":
         # Clone repository and checkout version
-        git.run(context, [
-            "clone", context.config("eqasim_repository"),
-            "--branch", context.config("eqasim_branch"),
-            "--single-branch", "eqasim-java",
-            "--depth", "1"
-        ])
+        git.run(
+            context,
+            [
+                "clone",
+                context.config("eqasim_repository"),
+                "--branch",
+                context.config("eqasim_branch"),
+                "--single-branch",
+                "eqasim-java",
+                "--depth",
+                "1",
+            ],
+        )
 
         # Build eqasim
-        maven.run(context, ["-Pstandalone", "--projects", "ile_de_france", "--also-make", "package", "-DskipTests=true"], cwd = "%s/eqasim-java" % context.path())
+        maven.run(
+            context,
+            ["-Pstandalone", "--projects", "ile_de_france", "--also-make", "package", "-DskipTests=true"],
+            cwd="%s/eqasim-java" % context.path(),
+        )
         jar_path = "%s/eqasim-java/ile_de_france/target/ile_de_france-%s.jar" % (context.path(), version)
 
     # Special case: We provide the jar directly. This is mainly used for
     # creating input to unit tests of the eqasim-java package.
     else:
         os.makedirs("%s/eqasim-java/ile_de_france/target" % context.path())
-        shutil.copy(context.config("eqasim_path"),
-            "%s/eqasim-java/ile_de_france/target/ile_de_france-%s.jar" % (context.path(), version))
+        shutil.copy(
+            context.config("eqasim_path"),
+            "%s/eqasim-java/ile_de_france/target/ile_de_france-%s.jar" % (context.path(), version),
+        )
 
     return "eqasim-java/ile_de_france/target/ile_de_france-%s.jar" % version
+
 
 def validate(context):
     path = context.config("eqasim_path")
