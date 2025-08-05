@@ -1,11 +1,7 @@
+(corsica)=
 # Corsica
 
-The pipeline makes it easy to create synthetic populations and simulations
-for other regions than Île-de-France. In any case, we recommend to first
-follow instructions to set up a [synthetic population for Île-de-France](../population.md)
-and (if desired) the [respective simulation](../simulation.md). The following
-describes the steps and additional data sets necessary to create a population and
-simulation for **Corsica**.
+The following page describes the steps and additional data sets necessary to create a population and simulation for **Corsica**.
 
 ## Additional data
 
@@ -35,7 +31,7 @@ it is necessary to collect all relevant GTFS schedules one by one.
 
 - [Chemins de fer de Corse](https://www.data.corsica/explore/dataset/horaires-cfc-gtfs/export/)
 - [Cars Corse du Sud](https://www.data.corsica/explore/dataset/horaires-cars2a-gtfs/export/)
-- [Cars Haute Corse](https://www.data.corsica/explore/dataset/horaires-cars2b-gtfs/export/)
+- [Cars Haute Corse](https://www.data.corsica/explore/dataset/gtfs-transport-horaires-cars-de-haute-corse/export/)
 
 Download all the *zip*'d GTFS schedules and put them into the folder `data/gtfs_corsica`.
 
@@ -45,7 +41,7 @@ Download all the *zip*'d GTFS schedules and put them into the folder `data/gtfs_
 You need to download the region-specific adresses database :
 
 - [Adresses database](https://adresse.data.gouv.fr/data/ban/adresses/latest/csv/)
-- Click on the link *adresses-xx.csv.gz* where xx = departments codes (09, 11, 31, 32, 81, 82) 
+- Click on the link *adresses-xx.csv.gz* where xx = departments codes (2A and 2B) 
 - Copy the *gz* files into `data/ban_corsica`.
 
 

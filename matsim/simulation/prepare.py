@@ -4,11 +4,11 @@ import os.path
 import matsim.runtime.eqasim as eqasim
 
 def configure(context):
+    context.config("mode_choice", False)
+    
     context.stage("matsim.scenario.population")
     context.stage("matsim.scenario.households")
-
-    if context.config("generate_vehicles_file", False):
-        context.stage("matsim.scenario.vehicles")
+    context.stage("matsim.scenario.vehicles")
 
     context.stage("matsim.scenario.facilities")
     context.stage("matsim.scenario.supply.processed")
@@ -76,12 +76,11 @@ def execute(context):
     )
     shutil.copy(transit_vehicles_path, "%s/%stransit_vehicles.xml.gz" % (context.cache_path, context.config("output_prefix")))
 
-    if context.config("generate_vehicles_file"):
-        vehicles_path = "%s/%s" % (
-            context.path("matsim.scenario.vehicles"),
-            context.stage("matsim.scenario.vehicles")
-        )
-        shutil.copy(vehicles_path, "%s/%svehicles.xml.gz" % (context.cache_path, context.config("output_prefix")))
+    vehicles_path = "%s/%s" % (
+        context.path("matsim.scenario.vehicles"),
+        context.stage("matsim.scenario.vehicles")
+    )
+    shutil.copy(vehicles_path, "%s/%svehicles.xml.gz" % (context.cache_path, context.config("output_prefix")))
 
     # Generate base configuration
     eqasim.run(context, "org.eqasim.core.scenario.config.RunGenerateConfig", [
@@ -96,7 +95,8 @@ def execute(context):
     # Adapt config for Île-de-France
     eqasim.run(context, "org.eqasim.ile_de_france.scenario.RunAdaptConfig", [
         "--input-path", "generic_config.xml",
-        "--output-path", "%sconfig.xml" % context.config("output_prefix")
+        "--output-path", "%sconfig.xml" % context.config("output_prefix"),
+        "--prefix", context.config("output_prefix")
     ])
     assert os.path.exists("%s/%sconfig.xml" % (context.path(), context.config("output_prefix")))
 
@@ -109,35 +109,59 @@ def execute(context):
             columns = dict(departement_id = "id")
         )
         df_shape["id"] = df_shape["id"].astype(str)
-        df_shape.to_file("%s/departments.shp" % context.path())
 
-        eqasim.run(context, "org.eqasim.core.scenario.spatial.RunImputeSpatialAttribute", [
-            "--input-population-path", "prepared_population.xml.gz",
-            "--output-population-path", "prepared_population.xml.gz",
-            "--input-network-path", "%snetwork.xml.gz" % context.config("output_prefix"),
-            "--output-network-path", "%snetwork.xml.gz" % context.config("output_prefix"),
-            "--shape-path", "departments.shp",
-            "--shape-attribute", "id",
-            "--shape-value", "75",
-            "--attribute", "isUrban"
+        if "75" in df_shape["id"].unique():
+            df_shape.to_file("%s/departments.shp" % context.path())
+
+            eqasim.run(context, "org.eqasim.core.scenario.spatial.RunImputeSpatialAttribute", [
+                "--input-population-path", "prepared_population.xml.gz",
+                "--output-population-path", "prepared_population.xml.gz",
+                "--input-network-path", "%snetwork.xml.gz" % context.config("output_prefix"),
+                "--output-network-path", "%snetwork.xml.gz" % context.config("output_prefix"),
+                "--shape-path", "departments.shp",
+                "--shape-attribute", "id",
+                "--shape-value", "75",
+                "--attribute", "isUrban"
+            ])
+
+            eqasim.run(context, "org.eqasim.core.scenario.spatial.RunAdjustCapacity", [
+                "--input-path", "%snetwork.xml.gz" % context.config("output_prefix"),
+                "--output-path", "%snetwork.xml.gz" % context.config("output_prefix"),
+                "--shape-path", "departments.shp",
+                "--shape-attribute", "id",
+                "--shape-value", "75",
+                "--factor", str(0.8)
+            ])
+
+    
+    # Optionally, perform mode choice
+    if context.config("mode_choice"):
+        eqasim.run(context, "org.eqasim.core.standalone_mode_choice.RunStandaloneModeChoice", [
+            "--config-path", "%sconfig.xml" % context.config("output_prefix"),
+            "--config:standaloneModeChoice.outputDirectory", "mode_choice",
+            "--config:global.numberOfThreads", context.config("processes"),
+            "--write-output-csv-trips", "true",
+            "--skip-scenario-check", "true",
+            "--config:plans.inputPlansFile", "prepared_population.xml.gz",
+            "--eqasim-configurator-class", "org.eqasim.ile_de_france.IDFConfigurator",
+            "--mode-choice-configurator-class", "org.eqasim.ile_de_france.IDFStandaloneModeChoiceConfigurator"
         ])
 
-        eqasim.run(context, "org.eqasim.core.scenario.spatial.RunAdjustCapacity", [
-            "--input-path", "%snetwork.xml.gz" % context.config("output_prefix"),
-            "--output-path", "%snetwork.xml.gz" % context.config("output_prefix"),
-            "--shape-path", "departments.shp",
-            "--shape-attribute", "id",
-            "--shape-value", "75",
-            "--factor", str(0.8)
+        assert os.path.exists("%s/mode_choice/output_plans.xml.gz" % context.path())
+        assert os.path.exists("%s/mode_choice/output_trips.csv" % context.path())
+        assert os.path.exists("%s/mode_choice/output_pt_legs.csv" % context.path())
+
+        shutil.copy("%s/mode_choice/output_plans.xml.gz" % context.path(),
+                    "%s/%spopulation.xml.gz" % (context.path(), context.config("output_prefix")))
+    else:
+        # Route population
+        eqasim.run(context, "org.eqasim.core.scenario.routing.RunPopulationRouting", [
+            "--config-path", "%sconfig.xml" % context.config("output_prefix"),
+            "--output-path", "%spopulation.xml.gz" % context.config("output_prefix"),
+            "--threads", context.config("processes"),
+            "--config:plans.inputPlansFile", "prepared_population.xml.gz"
         ])
 
-    # Route population
-    eqasim.run(context, "org.eqasim.core.scenario.routing.RunPopulationRouting", [
-        "--config-path", "%sconfig.xml" % context.config("output_prefix"),
-        "--output-path", "%spopulation.xml.gz" % context.config("output_prefix"),
-        "--threads", context.config("processes"),
-        "--config:plans.inputPlansFile", "prepared_population.xml.gz"
-    ])
     assert os.path.exists("%s/%spopulation.xml.gz" % (context.path(), context.config("output_prefix")))
 
     # Validate scenario

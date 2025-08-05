@@ -10,7 +10,7 @@ Loads the IRIS zoning system.
 
 def configure(context):
     context.config("data_path")
-    context.config("iris_path", "iris_2021")
+    context.config("iris_path", "iris_2023")
     context.stage("data.spatial.codes")
 
 def execute(context):
@@ -55,7 +55,7 @@ def execute(context):
     return df_iris
 
 def find_iris(path):
-    candidates = list(glob.glob("{}/*.7z".format(path)))
+    candidates = sorted(list(glob.glob("{}/*.7z".format(path))))
 
     if len(candidates) == 0:
         raise RuntimeError("IRIS data is not available in {}".format(path))

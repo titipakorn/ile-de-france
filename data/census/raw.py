@@ -10,8 +10,8 @@ def configure(context):
     context.stage("data.spatial.codes")
 
     context.config("data_path")
-    context.config("census_path", "rp_2019/RP2019_INDCVI_csv.zip")
-    context.config("census_csv", "FD_INDCVI_2019.csv")
+    context.config("census_path", "rp_2021/RP2021_indcvi.zip")
+    context.config("census_csv", "FD_INDCVI_2021.csv")
 
 COLUMNS_DTYPES = {
     "CANTVILLE":"str", 
@@ -20,9 +20,7 @@ COLUMNS_DTYPES = {
     "COUPLE":"str", 
     "CS1":"str",
     "DEPT":"str", 
-    "ETUD":"str", 
-    "ILETUD":"str",
-    "ILT":"str", 
+    "ETUD":"str",
     "IPONDI":"str", 
     "IRIS":"str",
     "REGION":"str", 
@@ -50,7 +48,7 @@ def execute(context):
     
                 for df_chunk in csv:
                     progress.update(len(df_chunk))
-
+                    
                     df_chunk = df_chunk[df_chunk["DEPT"].isin(requested_departements)]
 
                     if len(df_chunk) > 0:
@@ -58,9 +56,8 @@ def execute(context):
 
     return pd.concat(df_records)
 
-
 def validate(context):
     if not os.path.exists("{}/{}".format(context.config("data_path"), context.config("census_path"))):
-        raise RuntimeError("RP 2019 data is not available")
+        raise RuntimeError("RP 2021 data is not available")
 
     return os.path.getsize("{}/{}".format(context.config("data_path"), context.config("census_path")))

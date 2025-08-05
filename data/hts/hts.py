@@ -32,7 +32,7 @@ def fix_trip_times(df_trips):
     print("Found %d occurences with negative duration" % np.count_nonzero(f_negative))
 
     # 1.1) Departure and arrival time may have been swapped, and chain is consistent
-    f_swap = np.copy(f_negative)
+    f_swap = np.asarray(f_negative).copy()
     f_swap &= (df_main["arrival_time"] > df_previous["arrival_time"]) | df_main["is_first_trip"]
     f_swap &= (df_main["departure_time"] < df_next["departure_time"]) | df_main["is_last_trip"]
     print("  of which %d can swap departure and arrival time without conflicts with previous or following trip" % np.count_nonzero(f_swap))
@@ -89,12 +89,13 @@ def fix_trip_times(df_trips):
     print("  of which we're able to shorten %d to make it consistent" % np.count_nonzero(f))
     df_main.loc[f, "arrival_time"] = df_next["departure_time"]
 
-    # Included trips
+    # Included trips (moving the first one to the start of the following trip and setting duration to zero)
     f = ~df_main["is_last_trip"]
     f &= df_main["departure_time"] >= df_next["departure_time"]
     f &= df_main["arrival_time"] <= df_next["arrival_time"]
+    df_main.loc[f, "departure_time"] = df_next["departure_time"]
+    df_main.loc[f, "arrival_time"] = df_next["departure_time"]
     print("Found %d occurences where current trip is included in next trip" % np.count_nonzero(f))
-    df_main = df_main[~f]
 
     return df_main
 

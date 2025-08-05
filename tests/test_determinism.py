@@ -13,11 +13,21 @@ def hash_sqlite_db(path):
     matter, hashing the dump of the database is more relevant.
     """
     con = sqlite3.connect(path)
-    hash = hashlib.md5()
+
+    data = []
     for line in con.iterdump():
-        encoded = (line + "\n").encode()
-        hash.update(encoded)
+        if not "rtree" in line: # Fix for compatibilit between Linux and Windows
+            line = line.replace("MEDIUMINT", "INTEGER") # Fix for compatibilit between Linux and Windows
+            data.append(line.encode())
+
     con.close()
+
+    data = sorted(data)
+
+    hash = hashlib.md5()
+    for item in data:
+        hash.update(item)
+    
     return hash.hexdigest()
 
 
@@ -54,7 +64,11 @@ def _test_determinism(index, data_path, tmpdir):
         regions = [10, 11], sampling_rate = 1.0, hts = "entd",
         random_seed = 1000, processes = 1,
         secloc_maximum_iterations = 10,
-        maven_skip_tests = True
+        maven_skip_tests = True,
+        matching_attributes = [
+            "sex", "any_cars", "age_class", "socioprofessional_class",
+            "income_class", "departement_id"
+        ]
     )
 
     stages = [
@@ -64,17 +78,21 @@ def _test_determinism(index, data_path, tmpdir):
     synpp.run(stages, config, working_directory = cache_path)
 
     REFERENCE_CSV_HASHES = {
-        "ile_de_france_activities.csv":     "dcf8e08e9f238c90bff0298048251dac",
-        "ile_de_france_households.csv":     "fa08f930689b27f9772c79d35075960d",
-        "ile_de_france_persons.csv":        "ed87e2b6dfd2a9914d5fc7b2bf6d52d3",
-        "ile_de_france_trips.csv":          "c283a9a9de3f5aeb95ef8e1308ae3434",
+        "ile_de_france_activities.csv":     "3bf2f0cb0214f9d243936a608bd48f8b",
+        "ile_de_france_households.csv":     "e1e805d7f2f5af1c058df7432318e596",
+        "ile_de_france_persons.csv":        "14331fd23121c64ba1494a7c1d356702",
+        "ile_de_france_trips.csv":          "153a48d6df448af9b32acfe99221fe90",
+        "ile_de_france_vehicle_types.csv":  "af7578c363ed4e7a23163b4ab554a0e1",
+        "ile_de_france_vehicles.csv":       "1151d40b07c612b62ec40ff40d3e9272",
     }
 
     REFERENCE_GPKG_HASHES = {
-        "ile_de_france_activities.gpkg":    "f9e519cb5665c314431bcd16bbb8b1b8",
-        "ile_de_france_commutes.gpkg":      "2e752795b7cd8e0cd4c8d32e736e455e",
-        "ile_de_france_homes.gpkg":         "6f028d84944df9c4ae9342a47a932074",
-        "ile_de_france_trips.gpkg":         "6b7a772aad4b994e5b04076fd7c88266",
+      
+        "ile_de_france_activities.gpkg":    "97f1fab92105dc2e67a7b3b9ac56ea0f",
+        "ile_de_france_commutes.gpkg":      "ba92179202c40e6754d47351eb640786",
+        "ile_de_france_homes.gpkg":         "8da4fb16e569dddc063ee72e227adc01",
+        "ile_de_france_trips.gpkg":         "d23697c9ea2906a5c9debb7fcf5ad250",
+
     }
 
     generated_csv_hashes = {
@@ -111,7 +129,11 @@ def _test_determinism_matsim(index, data_path, tmpdir):
         regions = [10, 11], sampling_rate = 1.0, hts = "entd",
         random_seed = 1000, processes = 1,
         secloc_maximum_iterations = 10,
-        maven_skip_tests = True
+        maven_skip_tests = True,
+        matching_attributes = [
+            "sex", "any_cars", "age_class", "socioprofessional_class",
+            "income_class", "departement_id"
+        ]
     )
 
     stages = [
@@ -123,9 +145,10 @@ def _test_determinism_matsim(index, data_path, tmpdir):
     REFERENCE_HASHES = {
         #"ile_de_france_population.xml.gz":  "e1407f918cb92166ebf46ad769d8d085",
         #"ile_de_france_network.xml.gz":     "5f10ec295b49d2bb768451c812955794",
-        "ile_de_france_households.xml.gz":  "cdbd6ed5b175328861f237dc58dee1ff",
+        "ile_de_france_households.xml.gz":  "42fee71fe5ad5906d76c6cf87a354a3f",
         #"ile_de_france_facilities.xml.gz":  "5ad41afff9ae5c470082510b943e6778",
-        "ile_de_france_config.xml":         "5ac6633bfef5a5053f10b720ffbc064a"
+        "ile_de_france_config.xml":         "30871dfbbd2b5bf6922be1dfe20ffe73",
+        "ile_de_france_vehicles.xml.gz":    "1f3c393ea69b557798ab0915581e33a4"
     }
 
     # activities.gpkg, trips.gpkg, meta.json,

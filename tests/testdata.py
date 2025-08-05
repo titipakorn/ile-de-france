@@ -2,10 +2,11 @@ import geopandas as gpd
 import pandas as pd
 import shapely.geometry as geo
 import numpy as np
-import os, shutil
-import py7zr, zipfile
+import os
+import shutil
+import py7zr
+import zipfile
 import glob
-import subprocess
 
 def create(output_path):
     """
@@ -49,6 +50,13 @@ def create(output_path):
     few municipalities are covered by IRIS:
     - 1B013, 1B014, 1B018, 1B019
     - 2D007, 2D008, 2D012, 2D013
+
+    The scenario cutter shape is a square of 5km x 5km, which is located in the center
+    of the two regions, containing part (25%) of the following municipalities :
+
+        1B025 | 2A021
+        -------------
+        1D005 | 2C001
     """
 
     BPE_OBSERVATIONS = 500
@@ -68,6 +76,8 @@ def create(output_path):
     DEPARTMENT_LENGTH = 25 * 1e3
     MUNICIPALITY_LENGTH = 5 * 1e3
     IRIS_LENGTH = 500
+
+    CUTTER_LENGTH = 5 * 1e3
 
     anchor_x = 638589
     anchor_y = 6861081
@@ -161,11 +171,11 @@ def create(output_path):
         iris = "CODE_IRIS", municipality = "INSEE_COM"
     ))
 
-    os.mkdir("%s/iris_2021" % output_path)
-    df_iris.to_file("%s/iris_2021/CONTOURS-IRIS.shp" % output_path)
+    os.mkdir("%s/iris_2023" % output_path)
+    df_iris.to_file("%s/iris_2023/CONTOURS-IRIS.shp" % output_path)
 
-    with py7zr.SevenZipFile("%s/iris_2021/iris.7z" % output_path, "w") as archive:
-        for source in glob.glob("%s/iris_2021/CONTOURS-IRIS.*" % output_path):
+    with py7zr.SevenZipFile("%s/iris_2023/iris.7z" % output_path, "w") as archive:
+        for source in glob.glob("%s/iris_2023/CONTOURS-IRIS.*" % output_path):
             archive.write(source, "LAMB93/{}".format(source.split("/")[-1]))
             os.remove(source)
 
@@ -178,17 +188,17 @@ def create(output_path):
         iris = "CODE_IRIS", municipality = "DEPCOM", department = "DEP", region = "REG"
     ))
 
-    os.mkdir("%s/codes_2021" % output_path)
+    os.mkdir("%s/codes_2023" % output_path)
 
-    with zipfile.ZipFile("%s/codes_2021/reference_IRIS_geo2021.zip" % output_path, "w") as archive:
-        with archive.open("reference_IRIS_geo2021.xlsx", "w") as f:
+    with zipfile.ZipFile("%s/codes_2023/reference_IRIS_geo2023.zip" % output_path, "w") as archive:
+        with archive.open("reference_IRIS_geo2023.xlsx", "w") as f:
             df_codes.to_excel(
                 f, sheet_name = "Emboitements_IRIS",
                 startrow = 5, index = False
             )
 
     # Dataset: Aggregate census
-    # Required attributes: IRIS, COM, DEP, REG, P15_POP
+    # Required attributes: IRIS, COM, DEP, REG, P21_POP
     print("Creating aggregate census ...")
 
     df_population = df.copy()
@@ -197,12 +207,12 @@ def create(output_path):
     ))
 
     # Set all population to fixed number
-    df_population["P19_POP"] = 120.0
+    df_population["P21_POP"] = 120.0
 
-    os.mkdir("%s/rp_2019" % output_path)
+    os.mkdir("%s/rp_2021" % output_path)
 
-    with zipfile.ZipFile("%s/rp_2019/base-ic-evol-struct-pop-2019.zip" % output_path, "w") as archive:
-        with archive.open("base-ic-evol-struct-pop-2019.xlsx", "w") as f:
+    with zipfile.ZipFile("%s/rp_2021/base-ic-evol-struct-pop-2021_xlsx.zip" % output_path, "w") as archive:
+        with archive.open("base-ic-evol-struct-pop-2021.xlsx", "w") as f:
             df_population.to_excel(
                 f, sheet_name = "IRIS", startrow = 5, index = False
             )
@@ -216,6 +226,7 @@ def create(output_path):
     categories = np.array(["A", "B", "C", "D", "E", "F", "G"])
 
     df_selection = df.iloc[random.randint(0, len(df), size = observations)].copy()
+    df_selection["CAPACITE"] = 500
     df_selection["DCIRIS"] = df_selection["iris"]
     df_selection["DEPCOM"] = df_selection["municipality"]
     df_selection["DEP"] = df_selection["department"]
@@ -227,12 +238,12 @@ def create(output_path):
     df_selection.iloc[-10:, df_selection.columns.get_loc("LAMBERT_X")] = np.nan
     df_selection.iloc[-10:, df_selection.columns.get_loc("LAMBERT_Y")] = np.nan
 
-    columns = ["DCIRIS", "LAMBERT_X", "LAMBERT_Y", "TYPEQU", "DEPCOM", "DEP"]
+    columns = ["CAPACITE","DCIRIS", "LAMBERT_X", "LAMBERT_Y", "TYPEQU", "DEPCOM", "DEP"]
 
-    os.mkdir("%s/bpe_2021" % output_path)
+    os.mkdir("%s/bpe_2023" % output_path)
 
-    with zipfile.ZipFile("%s/bpe_2021/bpe21_ensemble_xy_csv.zip" % output_path, "w") as archive:
-        with archive.open("bpe21_ensemble_xy.csv", "w") as f:
+    with zipfile.ZipFile("%s/bpe_2023/BPE23.zip" % output_path, "w") as archive:
+        with archive.open("BPE23.csv", "w") as f:
             df_selection[columns].to_csv(f,
                 sep = ";", index = False)
 
@@ -240,34 +251,86 @@ def create(output_path):
     # Required attributes: CODGEO, D115, ..., D915
     print("Creating FILOSOFI ...")
 
+    # Use the following data, taken from the Nantes municipality from the 2021 data set
+    filosofi_year = "21"
+    income_data = {
+        "househod_size": [
+            {"name": "1_pers", "sheet": "TAILLEM_1", "col_pattern": "TME1", "data": [9820,13380,15730,18140,20060,22050,24710,28120,34150]},
+            {"name": "2_pers", "sheet": "TAILLEM_2", "col_pattern": "TME2", "data": [12950,16840,19920,22660,25390,28500,32080,37030,45910]},
+            {"name": "3_pers", "sheet": "TAILLEM_3", "col_pattern": "TME3", "data": [11440,14850,18070,21040,23960,27190,30930,36130,45680]},
+            {"name": "4_pers", "sheet": "TAILLEM_4", "col_pattern": "TME4", "data": [11920,15720,19130,22440,25540,28750,32400,37520,46870]},
+            {"name": "5_pers_or_more", "sheet": "TAILLEM_5", "col_pattern": "TME5", "data": [9320,11510,13580,16180,19920,24570,29180,35460,46370]},
+        ],
+        "family_comp": [
+            {"name": "Single_man", "sheet": "TYPMENR_1", "col_pattern": "TYM1", "data": [9180,12830,15100,17740,19800,21890,24780,28290,34850]},
+            {"name": "Single_wom", "sheet": "TYPMENR_2", "col_pattern": "TYM2", "data": [10730,13730,16220,18420,20260,22160,24680,27990,33570]},
+            {"name": "Couple_without_child", "sheet": "TYPMENR_3", "col_pattern": "TYM3", "data": [15360,19560,22600,25260,27990,30980,34710,39640,49110]},
+            {"name": "Couple_with_child", "sheet": "TYPMENR_4", "col_pattern": "TYM4", "data": [11790,15540,19240,22670,25850,29180,33090,38570,48700]},
+            {"name": "Single_parent", "sheet": "TYPMENR_5", "col_pattern": "TYM5", "data": [9350,11150,12830,14660,16640,18760,21230,24700,31170]},
+            {"name": "complex_hh", "sheet": "TYPMENR_6", "col_pattern": "TYM6", "data": [9280,11850,14100,16740,19510,22480,26100,30640,38970]},
+        ]
+    }
 
     df_income = df.drop_duplicates("municipality")[["municipality"]].rename(columns = dict(municipality = "CODGEO"))
-    df_income["D119"] = 9122.0
-    df_income["D219"] = 11874.0
-    df_income["D319"] = 14430.0
-    df_income["D419"] = 16907.0
-    df_income["Q219"] = 22240.0
-    df_income["D619"] = 22827.0
-    df_income["D719"] = 25699.0
-    df_income["D819"] = 30094.0
-    df_income["D919"] = 32303.0
+
+    df_income_ensemble = df_income.copy()
+
+    # the following data is not related to the `income_data` datasets
+    df_income_ensemble["D121"] = 9122.0
+    df_income_ensemble["D221"] = 11874.0
+    df_income_ensemble["D321"] = 14430.0
+    df_income_ensemble["D421"] = 16907.0
+    df_income_ensemble["Q221"] = 22240.0
+    df_income_ensemble["D621"] = 22827.0
+    df_income_ensemble["D721"] = 25699.0
+    df_income_ensemble["D821"] = 30094.0
+    df_income_ensemble["D921"] = 32303.0
 
     # Deliberately remove some of them
-    df_income = df_income[~df_income["CODGEO"].isin([
+    df_income_ensemble = df_income_ensemble[~df_income_ensemble["CODGEO"].isin([
         "1A015", "1A016"
     ])]
 
     # Deliberately only provide median for some
-    f = df_income["CODGEO"].isin(["1D002", "1D005"])
-    df_income.loc[f, "D215"] = np.nan
+    f = df_income_ensemble["CODGEO"].isin(["1D002", "1D005"])
+    df_income_ensemble.loc[f, "D215"] = np.nan
 
-    os.mkdir("%s/filosofi_2019" % output_path)
+    for value in income_data["househod_size"]:
+        value["df"] = df_income.copy()
+        col_pattern = value["col_pattern"]
+        columns = [
+            "%sD%d" % (col_pattern, q) + filosofi_year if q != 5 else col_pattern + "Q2" + filosofi_year
+            for q in range(1, 10)
+        ]
+        for i, column in enumerate(columns):
+            value["df"][column] = value["data"][i]
+        
+    for value in income_data["family_comp"]:
+        value["df"] = df_income.copy()
+        col_pattern = value["col_pattern"]
+        columns = [
+            "%sD%d" % (col_pattern, q) + filosofi_year if q != 5 else col_pattern + "Q2" + filosofi_year
+            for q in range(1, 10)
+        ]
+        for i, column in enumerate(columns):
+            value["df"][column] = value["data"][i]
 
-    with zipfile.ZipFile("%s/filosofi_2019/indic-struct-distrib-revenu-2019-COMMUNES.zip" % output_path, "w") as archive:
-        with archive.open("FILO2019_DISP_COM.xlsx", "w") as f:
-            df_income.to_excel(
-                f, sheet_name = "ENSEMBLE", startrow = 5, index = False
-            )
+    os.mkdir("%s/filosofi_2021" % output_path)
+
+    with zipfile.ZipFile("%s/filosofi_2021/indic-struct-distrib-revenu-2021-COMMUNES_XLSX.zip" % output_path, "w") as archive:
+        with archive.open("FILO2021_DISP_COM.xlsx", "w") as f:
+            with pd.ExcelWriter(f) as writer:  
+                df_income_ensemble.to_excel(
+                    writer, sheet_name = "ENSEMBLE", startrow = 5, index = False
+                )
+                for value in income_data["househod_size"]:
+                    value["df"].to_excel(
+                        writer, sheet_name = value["sheet"], startrow = 5, index = False
+                    )
+                for value in income_data["family_comp"]:
+                    value["df"].to_excel(
+                        writer, sheet_name = value["sheet"], startrow = 5, index = False
+                    )
 
     # Data set: ENTD
     print("Creating ENTD ...")
@@ -301,7 +364,7 @@ def create(output_path):
                 "De 1 000", "De 1 200", "De 1 500", "De 1800",
                 "De 2 000", "De 2 500", "De 3 000", "De 4 000",
                 "De 6 000", "10 000"
-            ])
+            ]), numcom_UU2010 = ["B", "C", "I", "R"][household_index % 4]
         ))
 
         for person_index in range(HTS_HOUSEHOLD_MEMBERS):
@@ -388,8 +451,9 @@ def create(output_path):
         trips = []
     )
 
+    person_index = 0
     for household_index in range(HTS_HOUSEHOLDS):
-        household_id = household_index
+        household_id = household_index * 1000 + 50
 
         municipality = random.choice(df["municipality"].unique())
         region = df[df["municipality"] == municipality]["region"].values[0]
@@ -402,8 +466,7 @@ def create(output_path):
             MNP = 3, REVENU = random.randint(12)
         ))
 
-        for person_index in range(HTS_HOUSEHOLD_MEMBERS):
-            person_id = household_id * 1000 + person_index
+        for person_id in range(1, HTS_HOUSEHOLD_MEMBERS + 1):
             studies = random.random_sample() < 0.3
 
             data["persons"].append(dict(
@@ -421,7 +484,7 @@ def create(output_path):
             work_region = df[df["municipality"] == work_municipality]["region"].values[0]
             work_department = df[df["municipality"] == work_municipality]["department"].values[0]
 
-            purpose = 21 if studies else 11
+            purpose = 4 if studies else 2
             mode = random.choice([1, 2, 3, 5, 7])
 
             origin_hour = 8
@@ -429,7 +492,7 @@ def create(output_path):
 
             if person_index % 100 == 0:
                 # Testing proper diffusion of plan times
-                orign_hour = 0
+                origin_hour = 0
                 origin_minute = 12
 
             data["trips"].append(dict(
@@ -442,18 +505,27 @@ def create(output_path):
 
             data["trips"].append(dict(
                 NQUEST = household_id, NP = person_id,
-                ND = 1, ORDEP = work_department, DESTDEP = home_department,
+                ND = 2, ORDEP = work_department, DESTDEP = home_department,
                 ORH = 8, ORM = 0, DESTH = 9, DESTM = 0, ORCOMM = work_municipality,
                 DESTCOMM = home_municipality, DPORTEE = 3, MODP_H7 = 2,
-                DESTMOT_H9 = 31, ORMOT_H9 = purpose
+                DESTMOT_H9 = 5, ORMOT_H9 = purpose
             ))
 
             data["trips"].append(dict(
                 NQUEST = household_id, NP = person_id,
-                ND = 2, ORDEP = home_department, DESTDEP = home_department,
+                ND = 3, ORDEP = home_department, DESTDEP = home_department,
                 ORH = 17, ORM = 0, DESTH = 18, DESTM = 0, ORCOMM = home_municipality,
                 DESTCOMM = home_municipality, DPORTEE = 3, MODP_H7 = 2,
-                DESTMOT_H9 = 1, ORMOT_H9 = 31
+                DESTMOT_H9 = 1, ORMOT_H9 = 5
+            ))
+
+            # Tail
+            data["trips"].append(dict(
+                NQUEST = household_id, NP = person_id,
+                ND = 4, ORDEP = home_department, DESTDEP = home_department,
+                ORH = 22, ORM = 0, DESTH = 21, DESTM = 0, ORCOMM = home_municipality,
+                DESTCOMM = home_municipality, DPORTEE = 3, MODP_H7 = 2,
+                DESTMOT_H9 = 5, ORMOT_H9 = 1
             ))
 
     os.mkdir("%s/egt_2010" % output_path)
@@ -471,7 +543,8 @@ def create(output_path):
 
         iris = df["iris"].iloc[random.randint(len(df))]
         department = iris[:2]
-        if iris.endswith("0000"): iris = iris[:-4] + "XXXX"
+        if iris.endswith("0000"):
+            iris = iris[:-4] + "XXXX"
 
         if random.random_sample() < 0.1: # For some, commune is not known
             iris = "ZZZZZZZZZ"
@@ -502,8 +575,8 @@ def create(output_path):
     df_persons = pd.DataFrame.from_records(persons)[columns]
     df_persons.columns = columns
 
-    with zipfile.ZipFile("%s/rp_2019/RP2019_INDCVI_csv.zip" % output_path, "w") as archive:
-        with archive.open("FD_INDCVI_2019.csv", "w") as f:
+    with zipfile.ZipFile("%s/rp_2021/RP2021_indcvi.zip" % output_path, "w") as archive:
+        with archive.open("FD_INDCVI_2021.csv", "w") as f:
             df_persons.to_csv(f, sep = ";")
 
     # Data set: commute flows
@@ -525,8 +598,8 @@ def create(output_path):
     columns = ["COMMUNE", "DCLT", "TRANS", "ARM", "IPONDI"]
     df_work.columns = columns
 
-    with zipfile.ZipFile("%s/rp_2019/RP2019_MOBPRO_csv.zip" % output_path, "w") as archive:
-        with archive.open("FD_MOBPRO_2019.csv", "w") as f:
+    with zipfile.ZipFile("%s/rp_2021/RP2021_mobpro.zip" % output_path, "w") as archive:
+        with archive.open("FD_MOBPRO_2021.csv", "w") as f:
             df_work.to_csv(f, sep = ";")
 
     # ... education
@@ -536,12 +609,13 @@ def create(output_path):
     ))
     df_education["ARM"] = "Z"
     df_education["IPONDI"] = 1.0
+    df_education["AGEREV10"] = 1
 
-    columns = ["COMMUNE", "DCETUF", "ARM", "IPONDI"]
+    columns = ["COMMUNE", "DCETUF", "ARM", "IPONDI","AGEREV10"]
     df_education.columns = columns
 
-    with zipfile.ZipFile("%s/rp_2019/RP2019_MOBSCO_csv.zip" % output_path, "w") as archive:
-        with archive.open("FD_MOBSCO_2019.csv", "w") as f:
+    with zipfile.ZipFile("%s/rp_2021/RP2021_mobsco.zip" % output_path, "w") as archive:
+        with archive.open("FD_MOBSCO_2021.csv", "w") as f:
             df_education.to_csv(f, sep = ";")
 
     # Data set: BD-TOPO
@@ -657,11 +731,41 @@ def create(output_path):
     
     df_sirene_geoloc.to_csv("%s/sirene/GeolocalisationEtablissement_Sirene_pour_etudes_statistiques_utf8.zip" % output_path, index = False, sep=";", compression={'method': 'zip', 'archive_name': 'GeolocalisationEtablissement_Sirene_pour_etudes_statistiques_utf8.csv'})
 
-    
+    # Data set: Urban type
+    print("Creating urban type ...")
+    df_urban_type = df_codes[["DEPCOM"]].copy().rename(columns = { "DEPCOM": "CODGEO" })
+    df_urban_type = df_urban_type.drop_duplicates()
+    df_urban_type["STATUT_2017"] = [["B", "C", "I", "H"][k % 4] for k in range(len(df_urban_type))]
+
+    df_urban_type = pd.concat([df_urban_type, pd.DataFrame({
+        "CODGEO": ["75056", "69123", "13055"],
+        "STATUT_2017": ["C", "C", "C"]
+    })])
+
+    os.mkdir("%s/urban_type" % output_path)
+    with zipfile.ZipFile("%s/urban_type/UU2020_au_01-01-2023.zip" % output_path, "w") as archive:
+        with archive.open("UU2020_au_01-01-2023.xlsx", "w") as f:
+            df_urban_type.to_excel(f, startrow = 5, sheet_name = "Composition_communale", index = False)
+
+
+    # set scenario cutter shape
+    print("Creating Cutter shape ...")
+    os.mkdir("%s/cutter" % output_path)
+
+    cutter_minx = anchor_x + REGION_LENGTH - CUTTER_LENGTH / 2
+    cutter_maxx = cutter_minx + CUTTER_LENGTH
+    cutter_miny = anchor_y - REGION_LENGTH / 2 - CUTTER_LENGTH / 2
+    cutter_maxy = cutter_miny + CUTTER_LENGTH
+    gpd.GeoDataFrame(
+        geometry = [geo.box(
+            cutter_minx, cutter_miny, cutter_maxx, cutter_maxy
+        )],
+        crs = "EPSG:2154"
+    ).to_file("%s/cutter/cutter.geojson" % output_path)
+
     # Data set: OSM
     # We add add a road grid of 500m
     print("Creating OSM ...")
-    import itertools
 
     osm = []
     osm.append('<?xml version="1.0" encoding="UTF-8"?>')
@@ -686,7 +790,7 @@ def create(output_path):
                 links.append([node_index, node_index + 1])
 
             if i < lengthx - 1:
-                links.append([node_index, node_index + lengthx])
+                links.append([node_index, node_index + 1])
 
             node_index += 1
 
@@ -694,16 +798,53 @@ def create(output_path):
     df_nodes = df_nodes.to_crs("EPSG:4326")
 
     for row in df_nodes.itertuples():
-        osm.append('<node id="%d" lat="%f" lon="%f" version="3" timestamp="2010-12-05T17:00:00" />' % (
+        osm.append('<node id="%d" lat="%f" lon="%f" version="3" timestamp="2010-12-05T17:00:00Z" />' % (
             row[1], row[2].y, row[2].x
         ))
 
-    for index, link in enumerate(links):
-        osm.append('<way id="%d" version="3" timestamp="2010-12-05T17:00:00">' % (index + 1))
+    for building_index, link in enumerate(links):
+        osm.append('<way id="%d" version="3" timestamp="2010-12-05T17:00:00Z">' % (building_index + 1))
         osm.append('<nd ref="%d" />' % link[0])
         osm.append('<nd ref="%d" />' % link[1])
         osm.append('<tag k="highway" v="primary" />')
         osm.append('</way>')
+
+
+    # Add a small square building around the center of the cutter region
+    # This is to test the noise part
+
+    building_size = 50
+    building_offset_x = 50
+    building_x = building_offset_x + cutter_minx + (cutter_maxx - cutter_minx) / 2 - building_size / 2  # Centered, 10m wide
+    building_y = cutter_miny + (cutter_maxy - cutter_miny) / 2 - building_size / 2  # Centered, 10m high
+
+    building_polygon = geo.Polygon([
+        (building_x, building_y), 
+        (building_x + building_size, building_y), 
+        (building_x + building_size, building_y + building_size), 
+        (building_x, building_y + building_size)
+    ])
+
+    df_building = gpd.GeoSeries([building_polygon], crs="EPSG:2154")
+    df_building.to_file("%s/building.geojson" % output_path)
+    building_polygon = df_building.to_crs("EPSG:4326").iloc[0]
+
+    polygon_nodes_id = []
+    for i, coord in enumerate(building_polygon.exterior.coords[:-1]):
+        node_id = node_index + i
+        osm.append('<node id="%d" lat="%f" lon="%f" version="3" timestamp="2010-12-05T17:00:00Z" />' % (
+            node_id, coord[1], coord[0]
+        ))
+        polygon_nodes_id.append(node_id)
+    polygon_nodes_id.append(polygon_nodes_id[0])  # Close the polygon
+
+    building_index += 1
+    osm.append('<way id="%d" version="3" timestamp="2010-12-05T17:00:00Z">' % (building_index + 1) )
+    for node_id in polygon_nodes_id:
+        osm.append('<nd ref="%d" />' % node_id)
+    osm.append('<tag k="building" v="yes" />')
+    osm.append('</way>')
+    node_index += len(building_polygon.exterior.coords) - 1
 
     osm.append('</osm>')
 
@@ -712,14 +853,10 @@ def create(output_path):
     with gzip.open("%s/osm_idf/ile-de-france-220101.osm.gz" % output_path, "wb+") as f:
         f.write(bytes("\n".join(osm), "utf-8"))
 
-
-    import subprocess
-
-    subprocess.check_call([
-        shutil.which("osmosis"), "--read-xml", "%s/osm_idf/ile-de-france-220101.osm.gz" % output_path,
-        "--write-pbf", "%s/osm_idf/ile-de-france-220101.osm.pbf" % output_path
-    ])
-
+    import osmium
+    with osmium.SimpleWriter("{}/osm_idf/ile-de-france-220101.osm.pbf".format(output_path)) as writer:
+        for item in osmium.FileProcessor("{}/osm_idf/ile-de-france-220101.osm.gz".format(output_path)):
+            writer.add(item)
 
     # Data set: GTFS
     print("Creating GTFS ...")
@@ -796,6 +933,64 @@ def create(output_path):
     import data.gtfs.utils
     data.gtfs.utils.write_feed(feed, "%s/gtfs_idf/IDFM-gtfs.zip" % output_path)
 
+    # Dataset: Parc automobile
+    df_vehicles_region = pd.DataFrame(index = pd.MultiIndex.from_product([
+        df["region"].unique(),
+        np.arange(20),
+    ], names = [
+        "Code région", "Age au 01/01/2021"
+    ])).reset_index()
+
+    # to enforce string
+    df_vehicles_region = pd.concat([df_vehicles_region, pd.DataFrame({
+        "Code région": ["AB"],
+        "Age au 01/01/2021": [0],
+    })])
+
+    df_vehicles_region["Code région"] = df_vehicles_region["Code région"].astype(str)
+
+    df_vehicles_region["Parc au 01/01/2021"] = 100
+    df_vehicles_region["Energie"] = "Gazole"
+    df_vehicles_region["Vignette crit'air"] = "Crit'air 1"
+
+    df_vehicles_region["Age au 01/01/2021"] = df_vehicles_region["Age au 01/01/2021"].astype(str)
+    df_vehicles_region["Age au 01/01/2021"] = df_vehicles_region["Age au 01/01/2021"].replace("20", ">20")
+    df_vehicles_region["Age au 01/01/2021"] = df_vehicles_region["Age au 01/01/2021"] + " ans"
+
+    df_vehicles_commune = pd.DataFrame({
+        "municipality": df["municipality"].unique()
+    })
+    df_vehicles_commune["Parc au 01/01/2021"] = 100
+    df_vehicles_commune["Energie"] = "Gazole"
+    df_vehicles_commune["Vignette Crit'air"] = "Crit'air 1"
+
+    df_vehicles_commune = pd.merge(df_vehicles_commune, df[[
+        "municipality", "region", "department"
+    ]], on = "municipality")
+
+    df_vehicles_commune = df_vehicles_commune.rename(columns = {
+        "municipality": "Code commune",
+        "department": "Code départment",
+        "region": "Code région",
+    })
+
+    os.mkdir("%s/vehicles" % output_path)
+    
+    with zipfile.ZipFile("%s/vehicles/parc_vp_regions.zip" % output_path, "w") as archive:
+        with archive.open("Parc_VP_Regions_2021.xlsx", "w") as f:
+            df_vehicles_region.to_excel(f)
+
+    with zipfile.ZipFile("%s/vehicles/parc_vp_communes.zip" % output_path, "w") as archive:
+        with archive.open("Parc_VP_Communes_2021.xlsx", "w") as f:
+            df_vehicles_commune.to_excel(f)
+
 if __name__ == "__main__":
+    import shutil
     import sys
+    import os
+    folder = sys.argv[1]
+    os.makedirs(folder, exist_ok=True)
+
+    for dir in os.listdir(folder):
+        shutil.rmtree(os.path.join(folder,dir))
     create(sys.argv[1])

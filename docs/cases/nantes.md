@@ -1,11 +1,7 @@
-# Nantes
+(nantes)=
+# Nantes / Loire-Atlantique
 
-The pipeline makes it easy to create synthetic populations and simulations
-for other regions than Île-de-France. In any case, we recommend to first
-follow instructions to set up a [synthetic population for Île-de-France](../population.md)
-and (if desired) the [respective simulation](../simulation.md). The following
-describes the steps and additional data sets necessary to create a population and
-simulation for **Nantes** and its surrounding department Loire-Atlantique.
+The following page describes the steps and additional data sets necessary to create a population and simulation for **Nantes** and its surrounding department Loire-Atlantique.
 
 ## Additional data
 
@@ -34,11 +30,10 @@ it is necessary to collect all relevant GTFS schedules one by one. Here, we
 provide a selection of links, which is not necessarily exhaustive:
 
 - [TAN Nantes](https://transport.data.gouv.fr/datasets/tan-arrets-horaires-et-circuits/)
-- [Aléop Loire Atlantique](https://transport.data.gouv.fr/datasets/reseau-de-transport-regional-aleop-loire-atlantique)
+- [Aléop Loire Atlantique](https://transport.data.gouv.fr/datasets/arrets-horaires-et-circuits-des-lignes-de-transports-aleop-1)
 - [STRAN Saint-Nazaire](https://transport.data.gouv.fr/datasets/stran-arrets-horaires-et-circuits-urbains-et-scolaires-gtfs/)
 - [Brévibus](https://transport.data.gouv.fr/datasets/reseau-urbain-brevibus/) (save as `brevibus.gtfs.zip`)
 - [Guérande](https://transport.data.gouv.fr/datasets/lignes-arrets-et-horaires-de-transport-pour-cap-atlantique-lila-presquile-gtfs/)
-- [Zenbus](https://transport.data.gouv.fr/datasets/horaires-theoriques-et-temps-reel-de-la-navette-du-pont-de-saint-nazaire-gtfs-gtfs-rt/)
 - [SNCF TER](https://ressources.data.sncf.com/explore/dataset/sncf-ter-gtfs/information/)
 - [SNCF Intercités](https://ressources.data.sncf.com/explore/dataset/sncf-intercites-gtfs/information/)
 - [SNCF TGV](https://ressources.data.sncf.com/explore/dataset/horaires-des-train-voyages-tgvinouiouigo/information/)
@@ -50,8 +45,8 @@ Download all the *zip*'d GTFS schedules and put them into the folder `data/gtfs_
 You need to download the region-specific adresses database :
 
 - [Adresses database](https://adresse.data.gouv.fr/data/ban/adresses/latest/csv/)
-- Click on the link *adresses-xx.csv.gz* where xx = departments codes (01,38,42,69) 
-- Copy the *gz* files into `data/ban_nantes`.
+- Click on the link *adresses-44.csv.gz*
+- Copy the *gz* file into `data/ban_nantes`.
 
 ### E) *Optional*: Regional Household Travel Survey 2015
 
@@ -78,7 +73,6 @@ Afterwards, you should have the following additional files in your directory str
 - `data/gtfs_nantes/stran-merge.gtfs.zip`
 - `data/gtfs_nantes/brevibus.gtfs.zipp`
 - `data/gtfs_nantes/lilapresquile.gtfs.zip`
-- `data/gtfs_nantes/loire-atlantique915785.zip`
 - `data/gtfs_nantes/export-ter-gtfs-last.zip`
 - `data/gtfs_nantes/export_gtfs_voyages.zip`
 - `data/gtfs_nantes/export-intercites-gtfs-last.zip`
