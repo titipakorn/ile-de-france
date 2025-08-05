@@ -47,11 +47,11 @@ def execute(context):
         )
         content = content.replace(
             '<param name="modes" value="car,pt,bike,walk" />',
-            '<param name="modes" value="car,pt,walk" />'
+            '<param name="modes" value="car,pt,walk,motorcycle" />'
         )
         content = content.replace(
             '<param name="chainBasedModes" value="car,bike" />',
-            '<param name="chainBasedModes" value="car" />'
+            '<param name="chainBasedModes" value="car,motorcycle" />'
         )
         content = content.replace(
             '<param name="mutationAffectsDuration" value="true" />',
@@ -59,15 +59,24 @@ def execute(context):
         )
         content = content.replace(
             '<param name="availableModes" value="pt, car, walk, bike" />',
-            '<param name="availableModes" value="pt, car, walk" />'
+            '<param name="availableModes" value="pt, car, walk, motorcycle" />'
         )
         content = content.replace(
             '<param name="cachedModes" value="pt, car, truck, car_passenger, walk, bike" />',
-            '<param name="cachedModes" value="pt, car, car_passenger, walk" />'
+            '<param name="cachedModes" value="pt, car, car_passenger, walk, motorcycle" />'
         )
         content = content.replace(
             'value="60"',
             'value="10"'
+        )
+
+        # Add mode-specific flow capacity factor for motorcycles in the network module
+        content = content.replace(
+            '<module name="network" >',
+            '''<module name="network" >
+      <paramSet type="mode" mode="motorcycle">
+        <param name="flowCapacityFactor" value="1.5" />
+      </paramSet>'''
         )
         
         with open("%s/%s" % (context.config("output_path"), config_file), "w+") as f_write:

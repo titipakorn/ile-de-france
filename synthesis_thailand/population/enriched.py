@@ -85,4 +85,17 @@ def execute(context):
     df_population.loc[df_population["number_of_bikes"] == 0, "bike_availability"] = "none"
     df_population["bike_availability"] = df_population["bike_availability"].astype("category")
 
+    # Add motorcycle availability
+    # For now, let's assume number_of_motorcycles is available in the HTS data
+    if "number_of_motorcycles" not in df_population.columns:
+        df_population["number_of_motorcycles"] = 0 # Placeholder if not available
+
+    df_population["motorcycle_availability"] = "all"
+    df_population.loc[df_population["number_of_motorcycles"] < df_population["household_size"], "motorcycle_availability"] = "some"
+    df_population.loc[df_population["number_of_motorcycles"] == 0, "motorcycle_availability"] = "none"
+    df_population["motorcycle_availability"] = df_population["motorcycle_availability"].astype("category")
+
+    # Adjust car availability to account for motorcycles
+    df_car_availability.loc[(df_car_availability["number_of_vehicles"] == 0) & (df_population["motorcycle_availability"] != "none"), "car_availability"] = "some" # Treat motorcycle as a car
+
     return df_population

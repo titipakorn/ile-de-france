@@ -1,0 +1,7 @@
+category,value,target
+age_range,0-14,1500000
+age_range,15-24,1800000
+age_range,25-54,4500000
+age_range,55+,2200000
+sex,m,5050000
+sex,f,4950000

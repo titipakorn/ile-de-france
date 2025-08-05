@@ -1,0 +1,4 @@
+type_id,mode,pce,nb_seats,length,width,hbefa_cat,hbefa_tech,hbefa_size,hbefa_emission
+car_small,car,1.0,4,4.0,1.8,PC,G-Kat-Euro-4,S,<1.4l
+car_medium,car,1.0,5,4.5,1.8,PC,G-Kat-Euro-4,M,1.4-2.0l
+motorcycle,motorcycle,0.3,2,2.0,0.8,MC,G-Kat-Euro-3,S,<50cc

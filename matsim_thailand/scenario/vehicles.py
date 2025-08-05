@@ -6,7 +6,7 @@ import pandas as pd
 import matsim.writers as writers
 
 def configure(context):
-    context.stage("synthesis.vehicles.selected")
+    context.stage("synthesis_thailand.vehicles.vehicles")
 
 TYPE_FIELDS = ["type_id", "nb_seats", "length", "width", "pce", "mode"]
 VEHICLE_FIELDS = ["vehicle_id", "type_id", "critair", "technology", "age", "euro"]
@@ -25,6 +25,7 @@ def execute(context):
                 for type in df_vehicle_types.to_dict(orient="records"):
                     writer.add_type(
                         type["type_id"],
+                        nb_seats=type["nb_seats"],
                         length=type["length"],
                         width=type["width"],
                         engine_attributes = {

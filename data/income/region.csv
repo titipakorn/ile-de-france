@@ -1,0 +1,7 @@
+region,income_bracket,min_income,max_income,households
+Bangkok,low,10000,30000,500000
+Bangkok,medium,30001,70000,800000
+Bangkok,high,70001,150000,400000
+Chiang Mai,low,8000,25000,300000
+Chiang Mai,medium,25001,60000,400000
+Chiang Mai,high,60001,120000,200000
