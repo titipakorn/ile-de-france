@@ -16,7 +16,7 @@ def configure(context):
 
     context.stage("synthesis_thailand.population.spatial.locations")
 
-    context.stage("documentation.meta_output")
+    context.stage("documentation.meta_output_thailand")
 
     context.config("output_path")
     context.config("output_prefix", "thailand_")

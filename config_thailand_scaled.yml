@@ -1,0 +1,51 @@
+## Synthetic population pipeline for Thailand with Population Scaling
+## based on the synpp package
+
+# This is the path to a directory where the pipeline can store temporary data
+working_directory: cache_thailand
+
+# This section defines which parts of the pipeline should be run
+run:
+  - data.hts.thailand.output_scaled # Use scaled population synthesis
+
+# Here the configuration of the pipeline starts
+config:
+  # Some general configuration
+  processes: 4
+
+  # Define which HTS to use - Thailand HTS
+  hts: thailand
+
+  # Population scaling configuration
+  sampling_rate: 0.1    # Sample 10% of the scaled population for output
+  random_seed: 1234
+
+  # Scaling method options:
+  # "simple" - Simple replication based on sampling rate
+  # "weight_based" - Use survey weights for statistical scaling (recommended)
+  # "stochastic" - Advanced stochastic rounding method
+  scaling_method: "weight_based"
+
+  # Optional: specify target population if known
+  target_population: 10000000  # Uncomment and set your target population
+
+  # Paths to the input data and where the output should be stored
+  data_path: /Users/prince/Workspaces/Transport/ile-de-france/datasource
+  output_path: output_thailand_scaled
+
+  # Output configuration
+  output_prefix: thailand_
+  output_formats: ["csv"]
+
+  # Thailand-specific configurations
+  # Spatial data configuration
+  thailand_spatial:
+    taz_zones: thailand_location/taz_zones.geojson
+    work_locations: thailand_location/work_locations.geojson
+    secondary_locations: thailand_location/secondary_locations.geojson
+
+  # HTS data files configuration
+  thailand_hts:
+    person_file: thailand_hts/Person.csv
+    household_file: thailand_hts/Household.csv
+    trip_file: thailand_hts/Trip.csv

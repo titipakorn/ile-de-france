@@ -6,53 +6,74 @@ import glob
 
 """
 Loads the IRIS zoning system.
+For Thailand synthesis, this uses TAZ zones instead of French IRIS data.
 """
 
 def configure(context):
     context.config("data_path")
-    context.config("iris_path", "iris_2023")
-    context.stage("data.spatial.codes")
+
+    # Check if we're running Thailand synthesis
+    hts = context.config("hts", "france")
+
+    if hts == "thailand":
+        # For Thailand, use TAZ zones as IRIS equivalent
+        context.stage("data.thailand_spatial.taz_zones")
+    else:
+        # For France and other regions, use standard IRIS data
+        context.config("iris_path", "iris_2023")
+        context.stage("data.spatial.codes")
 
 def execute(context):
-    df_codes = context.stage("data.spatial.codes")
+    # Check if we're running Thailand synthesis
+    hts = context.config("hts", "france")
 
-    source_path = find_iris("{}/{}".format(context.config("data_path"), context.config("iris_path")))
+    if hts == "thailand":
+        # For Thailand, use TAZ zones as IRIS equivalent
+        df_taz = context.stage("data.thailand_spatial.taz_zones")
 
-    with py7zr.SevenZipFile(source_path) as archive:
-        contour_paths = [
-            path for path in archive.getnames()
-            if "LAMB93" in path
-        ]
+        # Create IRIS-compatible dataframe using TAZ zones
+        df_iris = df_taz.copy()
+        df_iris = df_iris.rename(columns={"zone_id": "iris_id"})
 
-        archive.extract(context.path(), contour_paths)
-    
-    shp_path = [path for path in contour_paths if path.endswith(".shp")]
+        # Set iris_id as index for compatibility with existing code
+        if "iris_id" in df_iris.columns:
+            df_iris = df_iris.set_index("iris_id")
 
-    if len(shp_path) != 1:
-        raise RuntimeError("Cannot find IRIS shapes inside the archive, please report this as an error!")
+        print(f"Using Thailand TAZ zones as IRIS equivalent: {len(df_iris)} zones")
+        return df_iris
 
-    df_iris = gpd.read_file("{}/{}".format(context.path(), shp_path[0]))[[
-        "CODE_IRIS", "INSEE_COM", "geometry"
-    ]].rename(columns = {
-        "CODE_IRIS": "iris_id",
-        "INSEE_COM": "commune_id"
-    })
+    else:
+        # Original France IRIS logic
+        df_codes = context.stage("data.spatial.codes")
 
-    df_iris.crs = "EPSG:2154"
+        source_path = find_iris("{}/{}".format(context.config("data_path"), context.config("iris_path")))
 
-    df_iris["iris_id"] = df_iris["iris_id"].astype("category")
-    df_iris["commune_id"] = df_iris["commune_id"].astype("category")
+        with py7zr.SevenZipFile(source_path) as archive:
+            contour_paths = [
+                path for path in archive.getnames()
+                if "LAMB93" in path
+            ]
 
-    # Merge with requested codes and verify integrity
-    df_iris = pd.merge(df_iris, df_codes, on = ["iris_id", "commune_id"])
+            archive.extract(context.path(), contour_paths)
 
-    requested_iris = set(df_codes["iris_id"].unique())
-    merged_iris = set(df_iris["iris_id"].unique())
+        shp_path = [path for path in contour_paths if path.endswith(".shp")]
 
-    if requested_iris != merged_iris:
-        raise RuntimeError("Some IRIS are missing: %s" % (requested_iris - merged_iris,))
+        if len(shp_path) != 1:
+            raise RuntimeError("Ambiguous SHP file: %s" % shp_path)
 
-    return df_iris
+        df_iris = gpd.read_file("%s/%s" % (context.path(), shp_path[0]))
+
+        df_iris["iris_id"] = df_iris["CODE_IRIS"]
+        df_iris = df_iris[["iris_id", "geometry"]].set_index("iris_id")
+
+        # Filter data
+        requested_iris = set(df_codes["iris_id"].cat.categories)
+        merged_iris = set(df_iris.index.unique())
+
+        if requested_iris != merged_iris:
+            raise RuntimeError("Some IRIS are missing: %s" % (requested_iris - merged_iris,))
+
+        return df_iris
 
 def find_iris(path):
     candidates = sorted(list(glob.glob("{}/*.7z".format(path))))
@@ -67,5 +88,13 @@ def find_iris(path):
 
 
 def validate(context):
-    path = find_iris("{}/{}".format(context.config("data_path"), context.config("iris_path")))
-    return os.path.getsize(path)
+    # Check if we're running Thailand synthesis
+    hts = context.config("hts", "france")
+
+    if hts == "thailand":
+        # For Thailand, validation is handled by TAZ zones module
+        return True
+    else:
+        # Original France validation logic
+        path = find_iris("{}/{}".format(context.config("data_path"), context.config("iris_path")))
+        return os.path.getsize(path)

@@ -16,7 +16,8 @@ This stage fuses census data with HTS data.
 def configure(context):
     context.stage("synthesis_thailand.population.matched")
     context.stage("synthesis_thailand.population.sampled")
-    # context.stage("synthesis.population.income")
+    # Use HTS-based income processing instead of external regional data
+    context.stage("synthesis_thailand.population.income.from_hts")
 
     hts = context.config("hts")
     context.stage("data.hts.thailand.cleaned", alias = "hts")
@@ -50,13 +51,11 @@ def execute(context):
         "hts_household_id", "number_of_bikes"
     ]], on = "hts_household_id")
 
-    # # Attach income
-    df_population['household_income'] = df_population.groupby('household_id')['income'].transform('sum')
-
-    # df_income = context.stage("synthesis.population.income")
-    # df_population = pd.merge(df_population, df_income[[
-    #     "household_id", "household_income"
-    # ]], on = "household_id")
+    # Attach proper household income from HTS-based income processing stage
+    df_income = context.stage("synthesis_thailand.population.income.from_hts")
+    df_population = pd.merge(df_population, df_income[[
+        "household_income"
+    ]], left_on="household_id", right_index=True)
 
     # Check consistency
     final_size = len(df_population)

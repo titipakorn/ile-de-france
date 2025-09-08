@@ -14,6 +14,8 @@ def configure(context):
         context.stage("data.hts.edgt_44.reweighted", alias = "hts")
     elif hts == "emp":
         context.stage("data.hts.emp.reweighted", alias = "hts")
+    elif hts == "thailand":
+        context.stage("data.hts.thailand.cleaned", alias = "hts")
     else:
         raise RuntimeError("Unknown HTS: %s" % hts)
 

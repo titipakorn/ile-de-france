@@ -1,0 +1,42 @@
+## Synthetic population pipeline for Thailand
+## based on the synpp package
+
+# This is the path to a directory where the pipeline can store temporary data
+working_directory: cache_thailand
+
+# This section defines which parts of the pipeline should be run
+run:
+  - data.hts.thailand.output_simple # Use simplified Thailand HTS processing
+
+# Here the configuration of the pipeline starts
+config:
+  # Some general configuration
+  processes: 4
+
+  # Define which HTS to use - Thailand HTS
+  hts: thailand
+
+  # Define sampling rate and random seed for the output population
+  sampling_rate: 1.0  # Use full dataset for now
+  random_seed: 1234
+
+  # Paths to the input data and where the output should be stored
+  data_path: /Users/prince/Workspaces/Transport/ile-de-france/datasource
+  output_path: output_thailand
+
+  # Output configuration
+  output_prefix: thailand_
+  output_formats: ["csv", "parquet"]
+
+  # Thailand-specific configurations
+  # Spatial data configuration
+  thailand_spatial:
+    taz_zones: thailand_location/taz_zones.geojson  # Main TAZ zone boundaries
+    work_locations: thailand_location/work_locations.geojson
+    secondary_locations: thailand_location/secondary_locations.geojson
+
+  # HTS data files configuration
+  thailand_hts:
+    person_file: thailand_hts/Person.csv
+    household_file: thailand_hts/Household.csv
+    trip_file: thailand_hts/Trip.csv
